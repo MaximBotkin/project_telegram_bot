@@ -72,10 +72,10 @@ def buttons(message):
     else:
         if 'ДЗ:' in message.text:
             bot.send_message(message.chat.id, f'Новое {message.text}')
-            start_message(message)
+            start_message(message)  # Необходимо сделать чтение и рассылку всем пользователям по user_id в бд
         elif 'Расписание:' in message.text:
             bot.send_message(message.chat.id, f'Новое {message.text}')
-            start_message(message)
+            start_message(message)  # Необходимо сделать чтение и рассылку всем пользователям по user_id в бд
         else:
             bot.send_message(message.chat.id, text='Что-то на человеческом, я вас не понимаю😥')
 
