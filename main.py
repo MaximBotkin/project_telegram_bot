@@ -13,11 +13,19 @@ bot = telebot.TeleBot(TOKEN)
 
 
 class SQLighter:
-    def __init__(self, user):
+    def __init__(self, user_id, user_name):
         self.database = 'db.db'
-        self.con = sqlite3.connect("data.db")
+        self.con = sqlite3.connect(self.database)
         self.cursor = self.con.cursor()
-        self.users = user
+        self.user_id = user_id
+
+    def add_user(self):
+        result_of_execute = self.cursor.execute(f'SELECT * FROM users WHERE user_id = {self.user_id}')
+        if result_of_execute:
+            return
+        sqlite_insert_query = f"""INSERT INTO users (user_id)  VALUES  ({self.user_id})"""
+        self.cursor.execute(sqlite_insert_query)
+        self.con.commit()
 
 
 # команда /start
@@ -25,7 +33,9 @@ class SQLighter:
 def start_message(message):
     # получаем имя user и здороваемся с ним
     user_first_name = str(message.chat.first_name)
-
+    user_id = message.from_user.id
+    sqlither = SQLighter(user_id, user_first_name)
+    sqlither.add_user()
     buttons = ['👩‍🏫Создать класс', '👨‍🎓Найти класс', '❓Сообщить об ошибке']
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     for button in buttons:
@@ -45,17 +55,11 @@ def buttons(message):
         start_message(message)
     elif message.text == '👨‍🎓Найти класс':
         bot.send_message(message.chat.id, text='Введите id класса(6-значный ключ из цифр):')
-        search_class(message)
     else:
         bot.send_message(message.chat.id, text='Что-то на человеческом, я вас не понимаю😥')
 
 
-@bot.message_handler(content_types=['text'])
-def search_class(message):
-    if str(message.text).isdigit() and len(str(message.text)) == 6:
-        bot.send_message(message.chat.id, text=f'Ваш id = {message.text.id}')
-
-
 # запускаем бота
 if __name__ == '__main__':
+    print('Bot is working...')
     bot.infinity_polling()
