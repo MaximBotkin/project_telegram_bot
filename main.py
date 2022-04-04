@@ -162,13 +162,11 @@ def make_ad(message):
         information = message.text
         con = sqlite3.connect("db.db")
         cur = con.cursor()
-        class_id = 21 # не понял как классы конкретно искать нужные
+        class_id = 28 # не понял как классы конкретно искать нужные
         cur.execute(
             f'SELECT user_id FROM users_in_classes WHERE class_id = {class_id}')
         result = cur.fetchone()
-        cur.execute(f'SELECT user_id FROM users WHERE id = {result[0]}')
-        res_user_id = cur.fetchone()
-        bot.send_message(res_user_id[0], information)
+        bot.send_message(result[0], information)
 
     except Exception as e:
         print(e)
