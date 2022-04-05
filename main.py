@@ -10,6 +10,9 @@ import string
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 
+ACTIVE_CLASS = ''
+SHEDULE_ID = 0
+
 # инициализируем класс TeleBot
 bot = telebot.TeleBot(TOKEN)
 
@@ -68,6 +71,30 @@ class SQLighter:
         else:
             return result_of_execute
 
+    def search_users_in_class(self, key):
+        result_of_execute = self.cursor.execute(f'SELECT user_id FROM users_in_classes WHERE class_id = {key}').fetchall()
+        if not result_of_execute:
+            return False
+        else:
+            return result_of_execute
+
+    def search_shedule(self, key):
+        result_of_execute = self.cursor.execute(f'SELECT * FROM shedule'
+                                                f' WHERE id = (SELECT shedule_id FROM'
+                                                f' classes_info WHERE class_id = {key})').fetchall()
+        if not result_of_execute:
+            return False
+        else:
+            return result_of_execute
+
+    def search_shedule_for_day(self, shedule_id, day):
+        result_of_execute = self.cursor.execute(f'SELECT {day} FROM shedule WHERE '
+                                                f'id = {shedule_id}').fetchall()
+        if not result_of_execute:
+            return False
+        else:
+            return result_of_execute
+
 
 # команда /start
 @bot.message_handler(commands=['start', 'help'])
@@ -88,7 +115,7 @@ def buttons(message):
     if message.text == '❓Сообщить об ошибке':
         markup.add('✅Назад в главную')
         bot.send_message(message.chat.id, text='Если вы столкнулись с ошибкой напишите'
-                                               ' админам: @Maxb0ttt или @kirmiq.', reply_markup=markup)
+                                               ' админам: @Maxb0t или @kirmiq.', reply_markup=markup)
     elif message.text == '👨‍🎓Найти класс':
         markup.add('✅Назад в главную')
         sent = bot.send_message(message.chat.id, text='Введите id класса(6-значный ключ из цифр):',
@@ -101,15 +128,21 @@ def buttons(message):
     elif message.text == 'Ваши классы':
         list_of_classes(message)
     elif message.text == 'Объявление':
-        sent = bot.send_message(message.chat.id, 'Введите объявление:')
+        markup.add('✅Назад в главную')
+        sent = bot.send_message(message.chat.id, 'Введите объявление:', reply_markup=markup)
         bot.register_next_step_handler(sent, make_ad)
+    elif message.text == 'Расписание':
+        shedule(message)
     elif message.text == '✅Назад в главную':
         start_message(message)
+    elif message.text == 'Назад':
+        shedule(message)
     else:
         bot.send_message(message.chat.id, text='Что-то на человеческом, я вас не понимаю😥')
 
 
 def create_class(message):
+    global ACTIVE_CLASS
     try:
         if message.text == '✅Назад в главную':
             return start_message(message)
@@ -123,8 +156,9 @@ def create_class(message):
                     creating_key = False
         sqlighter.add_admin(key)
         sqlighter.add_user_to_class(key)
+        ACTIVE_CLASS = key
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        buttons = ['Расписание', 'ДЗ', 'Настройки', '✅Назад в главную']
+        buttons = ['Расписание', 'ДЗ', 'Настройки', 'Объявление', '✅Назад в главную']
         markup.add(*buttons)
         bot.send_message(message.chat.id, f'Класс был успешно создан. Ваш ключ:\n{key}',
                          reply_markup=markup)
@@ -134,15 +168,15 @@ def create_class(message):
 
 
 def search_class(message):
+    global ACTIVE_CLASS
     try:
-        if message.text == '✅Назад в главную':
-            return start_message(message)
         key = message.text
         sqlither = SQLighter(message.from_user.id)
         name = sqlither.search_class(key)
         if not name:
             raise Exception
         sqlither.add_user_to_class(key)
+        ACTIVE_CLASS = key
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         buttons = ['Расписание', 'ДЗ', '✅Назад в главную']
         markup.add(*buttons)
@@ -154,20 +188,13 @@ def search_class(message):
 
 
 def make_ad(message):
+    global ACTIVE_CLASS
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('✅Назад в главную')
     try:
-        if message.text == '✅Назад в главную':
-            return start_message(message)
-        information = message.text
-        con = sqlite3.connect("db.db")
-        cur = con.cursor()
-        class_id = 28 # не понял как классы конкретно искать нужные
-        cur.execute(
-            f'SELECT user_id FROM users_in_classes WHERE class_id = {class_id}')
-        result = cur.fetchone()
-        bot.send_message(result[0], information)
-
+        sqlighter = SQLighter(message.from_user.id)
+        ids = sqlighter.search_users_in_class(ACTIVE_CLASS)
+        pass
     except Exception as e:
         print(e)
         bot.send_message(message.chat.id, '❌Ошибка! Не удалось сделать объявление')
@@ -186,13 +213,64 @@ def list_of_classes(message):
                 klass.append(f'"{clas[0]}"')
             markup.add(*klass)
             markup.add('✅Назад в главную')
-            bot.send_message(message.chat.id, f'На данный момент вы состоите в классах: {", ".join(klass)}',
+            bot.send_message(message.chat.id, f'На данный момент вы состоите в классах: {", ".join(klass)}.',
                              reply_markup=markup)
     except Exception as e:
         print(e)
         markup.add('✅Назад в главную')
         bot.send_message(message.chat.id, 'К сожалению, вы не состоите не в одном классе',
                          reply_markup=markup)
+
+
+def shedule(message):
+    global SHEDULE_ID
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    try:
+        sqlighter = SQLighter(message.from_user.id)
+        shedule = sqlighter.search_shedule(ACTIVE_CLASS)
+        if shedule:
+            buttons = ['Понедельник', 'Вторник', 'Среда', 'Четверг',
+                       'Пятница', 'Суббота', 'Изменить расписание']
+            markup.add(*buttons)
+            markup.add('✅Назад в главную')
+            sent = bot.send_message(message.chat.id, 'Выберете день:', reply_markup=markup)
+            SHEDULE_ID = shedule[0][0]
+            bot.register_next_step_handler(sent, send_shedule)
+        else:
+            markup.add('Добавить расписание')
+            pass
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, 'Расписание не добавлено',
+                         reply_markup=markup)
+
+
+def send_shedule(message):
+    global SHEDULE_ID
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add('Назад')
+    markup.add('✅Назад в главную')
+    sqlighter = SQLighter(message.from_user.id)
+    if message.text == 'Понедельник':
+        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'monday')
+        bot.send_message(message.chat.id, day, reply_markup=markup)
+    elif message.text == 'Вторник':
+        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'tuesday')
+        bot.send_message(message.chat.id, day, reply_markup=markup)
+    elif message.text == 'Среда':
+        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'wednesday')
+        bot.send_message(message.chat.id, day, reply_markup=markup)
+    elif message.text == 'Четверг':
+        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'thursday')
+        bot.send_message(message.chat.id, day, reply_markup=markup)
+    elif message.text == 'Пятница':
+        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'friday')
+        bot.send_message(message.chat.id, day, reply_markup=markup)
+    elif message.text == 'Суббота':
+        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'saturday')
+        bot.send_message(message.chat.id, day, reply_markup=markup)
+    else:
+        bot.send_message(message.chat.id, 'Такого дня нет в вашем расписании!')
 
 
 # запускаем бота
