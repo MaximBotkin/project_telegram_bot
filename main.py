@@ -1,3 +1,22 @@
+import telebot
+from telebot import types
+from dotenv import load_dotenv
+import os
+import sqlite3
+import random
+import string
+
+# загружаем TOKEN из виртуального окружения
+load_dotenv()
+TOKEN = os.getenv('TOKEN')
+
+ACTIVE_CLASS = ''
+SHEDULE_ID = 0
+
+# инициализируем класс TeleBot
+bot = telebot.TeleBot(TOKEN)
+
+
 class SQLighter:
     def __init__(self, user_id):
         self.database = 'db.db'
