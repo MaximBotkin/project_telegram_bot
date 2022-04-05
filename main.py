@@ -1,22 +1,3 @@
-import telebot
-from telebot import types
-from dotenv import load_dotenv
-import os
-import sqlite3
-import random
-import string
-
-# загружаем TOKEN из виртуального окружения
-load_dotenv()
-TOKEN = os.getenv('TOKEN')
-
-ACTIVE_CLASS = ''
-SHEDULE_ID = 0
-
-# инициализируем класс TeleBot
-bot = telebot.TeleBot(TOKEN)
-
-
 class SQLighter:
     def __init__(self, user_id):
         self.database = 'db.db'
@@ -72,7 +53,23 @@ class SQLighter:
             return result_of_execute
 
     def search_users_in_class(self, key):
-        result_of_execute = self.cursor.execute(f'SELECT user_id FROM users_in_classes WHERE class_id = {key}').fetchall()
+        global ACTIVE_CLASS
+        class_id_from_active = self.cursor.execute(f'SELECT id FROM classes WHERE key = {ACTIVE_CLASS}').fetchone()
+        result_of_execute = self.cursor.execute(
+            f'SELECT user_id FROM users_in_classes WHERE class_id = {class_id_from_active[0]}').fetchone()
+        if not result_of_execute:
+            return False
+        else:
+            return result_of_execute
+
+    def create_new_admin(self, new_admins):
+        global ACTIVE_CLASS
+        result_of_execute = self.cursor.execute(f'SELECT id FROM classes WHERE key = {ACTIVE_CLASS}').fetchone()
+        # class_id_from_active = self.cursor.execute(f"""INSERT INTO admins (class_id, admin)  VALUES
+        #                          ({result_of_execute[0]}, {new_admins})""")  # operation must be str ( fix - later )
+        # self.cursor.execute(class_id_from_active)
+        # self.con.commit()
+
         if not result_of_execute:
             return False
         else:
@@ -101,7 +98,7 @@ class SQLighter:
 def start_message(message):
     # получаем имя user и здороваемся с ним
     user_first_name = str(message.chat.first_name)
-    buttons = ['👩‍🏫Создать класс', '👨‍🎓Найти класс', '❓Сообщить об ошибке', 'Ваши классы']
+    buttons = ['👩‍🏫Создать класс', '👨‍🎓Найти класс', '❓Сообщить об ошибке', 'Ваши классы', 'Получить id']
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     for button in buttons:
         markup.add(button)
@@ -135,6 +132,13 @@ def buttons(message):
         shedule(message)
     elif message.text == '✅Назад в главную':
         start_message(message)
+    elif message.text == 'Получить id':
+        bot.send_message(message.chat.id, f'{message.chat.id}')
+    elif message.text == 'Настройки':
+        settings(message)
+    elif message.text == 'Добавить админа':
+        sent = bot.send_message(message.chat.id, 'Введите id пользователя:', reply_markup=markup)
+        bot.register_next_step_handler(sent, new_admin)
     elif message.text == 'Назад':
         shedule(message)
     else:
@@ -194,10 +198,34 @@ def make_ad(message):
     try:
         sqlighter = SQLighter(message.from_user.id)
         ids = sqlighter.search_users_in_class(ACTIVE_CLASS)
-        pass
+        bot.send_message(ids[0], message.text)
     except Exception as e:
         print(e)
         bot.send_message(message.chat.id, '❌Ошибка! Не удалось сделать объявление')
+
+
+# need fix
+def new_admin(message):
+    global ACTIVE_CLASS
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add('✅Назад в главную')
+    try:
+        new_admins = message.from_user.id
+        sqlighter = SQLighter(message.from_user.id)
+        sqlighter.create_new_admin(ACTIVE_CLASS)
+        bot.send_message(message.chat.id, 'Админ успешно не добавлен, нужен фикс')
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, '❌Ошибка! Не удалось добавить админа')
+
+
+def settings(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    buttons = ['Добавить админа']
+    for button in buttons:
+        markup.add(button)
+    bot.send_message(message.chat.id, 'Вы перешли в настроки', reply_markup=markup)
+    markup.add('✅Назад в главную')
 
 
 def list_of_classes(message):
