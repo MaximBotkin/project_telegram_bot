@@ -58,28 +58,23 @@ class SQLighter:
     def search_class(self, key):
         result_of_execute = self.cursor.execute(f'SELECT name FROM classes WHERE key'
                                                 f' = {key}').fetchall()
-        if not result_of_execute:
-            return False
-        else:
-            return result_of_execute[0][0]
+        return result_of_execute[0][0] if result_of_execute else False
 
     def search_user_classes(self):
         result_of_execute = self.cursor.execute(f'SELECT name FROM classes INNER JOIN users_in_classes'
                                                 f' ON id = class_id WHERE user_id = {self.user_id}').fetchall()
-        if not result_of_execute:
-            return False
-        else:
-            return result_of_execute
+        return result_of_execute if result_of_execute else False
+
+    def user_is_admin(self, key):
+        result_of_execute = self.cursor.execute(f'SELECT * FROM admins INNER JOIN classes'
+                                                f' ON class_id = id WHERE admin = {self.user_id}').fetchall()
+        return True if result_of_execute else False
 
     def search_users_in_class(self, key):
-        global ACTIVE_CLASS
-        class_id_from_active = self.cursor.execute(f'SELECT id FROM classes WHERE key = {ACTIVE_CLASS}').fetchone()
         result_of_execute = self.cursor.execute(
-            f'SELECT user_id FROM users_in_classes WHERE class_id = {class_id_from_active[0]}').fetchone()
-        if not result_of_execute:
-            return False
-        else:
-            return result_of_execute
+            f'SELECT user_id FROM users_in_classes WHERE class_id ='
+            f' (SELECT id FROM classes WHERE key = {key})').fetchone()
+        return result_of_execute if result_of_execute else False
 
     def create_new_admin(self, new_admins):
         global ACTIVE_CLASS
@@ -87,28 +82,18 @@ class SQLighter:
         result_of_execute = f'INSERT INTO admins (class_id, admin)  VALUES({class_id_from_active[0]}, {new_admins});'
         self.cursor.execute(result_of_execute)
         self.con.commit()
-
-        if not result_of_execute:
-            return False
-        else:
-            return result_of_execute
+        return result_of_execute if result_of_execute else False
 
     def search_shedule(self, key):
         result_of_execute = self.cursor.execute(f'SELECT * FROM shedule'
                                                 f' WHERE id = (SELECT shedule_id FROM'
                                                 f' classes_info WHERE class_id = {key})').fetchall()
-        if not result_of_execute:
-            return False
-        else:
-            return result_of_execute
+        return result_of_execute if result_of_execute else False
 
     def search_shedule_for_day(self, shedule_id, day):
         result_of_execute = self.cursor.execute(f'SELECT {day} FROM shedule WHERE '
                                                 f'id = {shedule_id}').fetchall()
-        if not result_of_execute:
-            return False
-        else:
-            return result_of_execute
+        return result_of_execute if result_of_execute else False
 
 
 # команда /start
@@ -197,13 +182,23 @@ def search_class(message):
         name = sqlither.search_class(key)
         if not name:
             raise Exception
-        sqlither.add_user_to_class(key)
-        ACTIVE_CLASS = key
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        buttons = ['Расписание', 'ДЗ', '✅Назад в главную']
-        markup.add(*buttons)
-        bot.send_message(message.chat.id, f'Вы успешно перешли в "{name}"',
-                         reply_markup=markup)
+        if sqlither.user_is_admin(key):
+            sqlither.add_user_to_class(key)
+            ACTIVE_CLASS = key
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            buttons = ['Расписание', 'ДЗ', 'Настройки',
+                       'Объявление', '✅Назад в главную']
+            markup.add(*buttons)
+            bot.send_message(message.chat.id, f'Вы успешно перешли в "{name}"',
+                             reply_markup=markup)
+        else:
+            sqlither.add_user_to_class(key)
+            ACTIVE_CLASS = key
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            buttons = ['Расписание', 'ДЗ', '✅Назад в главную']
+            markup.add(*buttons)
+            bot.send_message(message.chat.id, f'Вы успешно перешли в "{name}"',
+                             reply_markup=markup)
     except Exception as e:
         print(e)
         bot.send_message(message.chat.id, '❌Ошибка! Не удалось найти класс')
@@ -213,13 +208,12 @@ def make_ad(message):
     global ACTIVE_CLASS
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('✅Назад в главную')
-    try:
-        sqlighter = SQLighter(message.from_user.id)
-        ids = sqlighter.search_users_in_class(ACTIVE_CLASS)
-        bot.send_message(ids[0], message.text)
-    except Exception as e:
-        print(e)
-        bot.send_message(message.chat.id, '❌Ошибка! Не удалось сделать объявление')
+    sqlighter = SQLighter(message.from_user.id)
+    ids = sqlighter.search_users_in_class(ACTIVE_CLASS)
+    print(ids, ACTIVE_CLASS)
+    for id in ids:
+        if id != message.from_user.id:
+            bot.send_message(id, message.text)
 
 
 def new_admin(message):
@@ -237,12 +231,15 @@ def new_admin(message):
 
 
 def settings(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    buttons = ['Добавить админа', '✅Назад в главную']
-    for button in buttons:
-        markup.add(button)
-    bot.send_message(message.chat.id, 'Вы перешли в настроки', reply_markup=markup)
-    markup.add('✅Назад в главную')
+    try:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        buttons = ['Добавить админа', '✅Назад в главную']
+        for button in buttons:
+            markup.add(button)
+        bot.send_message(message.chat.id, 'Вы перешли в настройки', reply_markup=markup)
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, 'Не удалось перейти в настройки')
 
 
 def list_of_classes(message):
@@ -268,9 +265,9 @@ def list_of_classes(message):
 
 
 def shedule(message):
-    global SHEDULE_ID
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    global ACTIVE_CLASS, SHEDULE_ID
     try:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         sqlighter = SQLighter(message.from_user.id)
         shedule = sqlighter.search_shedule(ACTIVE_CLASS)
         if shedule:
@@ -283,11 +280,11 @@ def shedule(message):
             bot.register_next_step_handler(sent, send_shedule)
         else:
             markup.add('Добавить расписание')
-            pass
+            bot.send_message(message.chat.id, 'На данный момент расписание не добавлено.',
+                             reply_markup=markup)
     except Exception as e:
         print(e)
-        bot.send_message(message.chat.id, 'Расписание не добавлено',
-                         reply_markup=markup)
+        bot.send_message(message.chat.id, 'Не удалось найти расписание')
 
 
 def send_shedule(message):
