@@ -83,11 +83,10 @@ class SQLighter:
 
     def create_new_admin(self, new_admins):
         global ACTIVE_CLASS
-        result_of_execute = self.cursor.execute(f'SELECT id FROM classes WHERE key = {ACTIVE_CLASS}').fetchone()
-        # class_id_from_active = self.cursor.execute(f"""INSERT INTO admins (class_id, admin)  VALUES
-        #                          ({result_of_execute[0]}, {new_admins})""")  # operation must be str ( fix - later )
-        # self.cursor.execute(class_id_from_active)
-        # self.con.commit()
+        class_id_from_active = self.cursor.execute(f'SELECT id FROM classes WHERE key = {ACTIVE_CLASS}').fetchone()
+        result_of_execute = f'INSERT INTO admins (class_id, admin)  VALUES({class_id_from_active[0]}, {new_admins});'
+        self.cursor.execute(result_of_execute)
+        self.con.commit()
 
         if not result_of_execute:
             return False
@@ -223,15 +222,14 @@ def make_ad(message):
         bot.send_message(message.chat.id, '❌Ошибка! Не удалось сделать объявление')
 
 
-# need fix
 def new_admin(message):
     global ACTIVE_CLASS
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('✅Назад в главную')
     try:
-        new_admins = message.from_user.id
+        new_admins = message.text
         sqlighter = SQLighter(message.from_user.id)
-        sqlighter.create_new_admin(ACTIVE_CLASS)
+        sqlighter.create_new_admin(new_admins)
         bot.send_message(message.chat.id, 'Админ успешно добавлен')
     except Exception as e:
         print(e)
@@ -240,7 +238,7 @@ def new_admin(message):
 
 def settings(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    buttons = ['Добавить админа']
+    buttons = ['Добавить админа', '✅Назад в главную']
     for button in buttons:
         markup.add(button)
     bot.send_message(message.chat.id, 'Вы перешли в настроки', reply_markup=markup)
