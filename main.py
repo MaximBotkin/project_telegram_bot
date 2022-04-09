@@ -149,15 +149,16 @@ def buttons(message):
     elif message.text == 'Ваши классы':
         list_of_classes(message)
     elif message.text == 'Объявление':
-        markup.add('✅Назад в главную')
-        sent = bot.send_message(message.chat.id, 'Введите объявление:', reply_markup=markup)
+        sent = bot.send_message(message.chat.id, 'Введите объявление:', reply_markup=types.ReplyKeyboardRemove())
         bot.register_next_step_handler(sent, make_ad)
     elif message.text == 'Расписание':
         shedule(message)
+    elif message.text == 'Назад🚫':
+        back(message)
     elif message.text == '✅Назад в главную':
         start_message(message)
     elif message.text == 'Получить id':
-        bot.send_message(message.chat.id, f'{message.chat.id}')
+        bot.send_message(message.chat.id, f'Ваш id: {message.chat.id}')
     elif message.text == 'Настройки':
         settings(message)
     elif message.text == 'Добавить админа':
@@ -178,6 +179,13 @@ def buttons(message):
         shedule(message)
     else:
         bot.send_message(message.chat.id, text='Что-то на человеческом, я вас не понимаю😥')
+
+
+def back(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    buttons = ['Расписание', 'ДЗ', 'Настройки', 'Объявление', '✅Назад в главную']
+    markup.add(*buttons)
+    bot.send_message(message.chat.id, text='Вы вернулись назад👀', reply_markup=markup)
 
 
 def create_class(message):
@@ -238,13 +246,14 @@ def search_class(message):
 
 def make_ad(message):
     global ACTIVE_CLASS
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add('✅Назад в главную')
     sqlighter = SQLighter(message.from_user.id)
     ids = sqlighter.search_users_in_class(ACTIVE_CLASS)
     for id in ids:
         if id[0] != message.from_user.id:
             bot.send_message(id[0], message.text)
+        else:
+            bot.send_message(message.chat.id, text='Объявление успешно отправлено')
+            back(message)
 
 
 def new_admin(message):
@@ -264,7 +273,7 @@ def new_admin(message):
 def settings(message):
     try:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        buttons = ['Добавить админа', '✅Назад в главную']
+        buttons = ['Добавить админа', 'Назад🚫', '✅Назад в главную']
         for button in buttons:
             markup.add(button)
         bot.send_message(message.chat.id, 'Вы перешли в настройки', reply_markup=markup)
@@ -310,7 +319,8 @@ def shedule(message):
             SHEDULE_ID = shedule[0][0]
             bot.register_next_step_handler(sent, send_shedule)
         else:
-            markup.add('Добавить расписание')
+            buttons1 = ['Добавить расписание', 'Назад🚫']
+            markup.add(*buttons1)
             bot.send_message(message.chat.id, 'На данный момент расписание не добавлено.',
                              reply_markup=markup)
     except Exception as e:
