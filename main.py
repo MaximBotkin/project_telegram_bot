@@ -116,6 +116,12 @@ class SQLighter:
                                                 f'id = {shedule_id}').fetchall()
         return result_of_execute if result_of_execute else False
 
+    def create_new_homework(self, key, homework, date):
+        global ACTIVE_CLASS
+        sqlite_insert_query = f"""INSERT INTO homework (id, date, homework, class_id) VALUES ({key}, {date}, {homework}, {ACTIVE_CLASS})"""
+        self.cursor.execute(sqlite_insert_query)
+        self.con.commit()
+
 
 # команда /start
 @bot.message_handler(commands=['start', 'help'])
@@ -153,6 +159,11 @@ def buttons(message):
     elif message.text == 'Объявление':
         sent = bot.send_message(message.chat.id, 'Введите объявление:', reply_markup=types.ReplyKeyboardRemove())
         bot.register_next_step_handler(sent, make_ad)
+    elif message.text == 'ДЗ':
+        homework(message)
+    elif message.text == 'Добавить ДЗ':
+        sent = bot.send_message(message.chat.id, 'Напишите ДЗ в формате ДД.ММ и домашнее задание')
+        bot.register_next_step_handler(sent, add_homework)
     elif message.text == 'Расписание':
         shedule(message)
     elif message.text == '🚫Назад':
@@ -355,7 +366,8 @@ def send_shedule(message):
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'monday')
         if day[0][0] is None:
             bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
-                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".',
+                             reply_markup=markup)
         else:
             diary, digit = '', 1
             for subject in day[0][0].split():
@@ -367,7 +379,8 @@ def send_shedule(message):
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'tuesday')
         if day[0][0] is None:
             bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
-                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".',
+                             reply_markup=markup)
         else:
             diary, digit = '', 1
             for subject in day[0][0].split():
@@ -379,7 +392,8 @@ def send_shedule(message):
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'wednesday')
         if day[0][0] is None:
             bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
-                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".',
+                             reply_markup=markup)
         else:
             diary, digit = '', 1
             for subject in day[0][0].split():
@@ -391,7 +405,8 @@ def send_shedule(message):
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'thursday')
         if day[0][0] is None:
             bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
-                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".',
+                             reply_markup=markup)
         else:
             diary, digit = '', 1
             for subject in day[0][0].split():
@@ -403,7 +418,8 @@ def send_shedule(message):
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'friday')
         if day[0][0] is None:
             bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
-                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".',
+                             reply_markup=markup)
         else:
             diary, digit = '', 1
             for subject in day[0][0].split():
@@ -415,7 +431,8 @@ def send_shedule(message):
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'saturday')
         if day[0][0] is None:
             bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
-                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".',
+                             reply_markup=markup)
         else:
             diary, digit = '', 1
             for subject in day[0][0].split():
@@ -518,6 +535,33 @@ def add_shedule_on_saturday(message):
     except Exception as e:
         print(e)
         bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
+
+
+def homework(message):
+    global ACTIVE_CLASS
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    buttons = ['Добавить ДЗ', 'Узнать ДЗ', '🚫Назад']
+    markup.add(*buttons)
+    bot.send_message(message.chat.id, 'Вы перешли в домашние задания', reply_markup=markup)
+
+
+def add_homework(message):
+    global ACTIVE_CLASS
+    try:
+        creating_key = True
+        key = ''
+        sqlighter = SQLighter(message.from_user.id)
+        while creating_key:
+            key = ''.join(random.choice(string.digits) for _ in range(6))
+            if key[0] != '0':
+                if not sqlighter.add_class(key, message.text):
+                    creating_key = False
+        date, homework = map(str, message.text.split())
+        sqlighter.create_new_homework(key, date, homework)
+
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, '❌Ошибка! Добавить домашнее задание')
 
 
 # запускаем бота
