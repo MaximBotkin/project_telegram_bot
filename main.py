@@ -445,7 +445,6 @@ def send_shedule(message):
 
 
 def add_shedule(message):
-    global ACTIVE_CLASS
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('❌Назад')
     markup.add('✅Назад в главную')
@@ -472,7 +471,6 @@ def add_shedule(message):
 
 
 def add_shedule_on_monday(message):
-    global ACTIVE_CLASS, SHEDULE_ID
     try:
         sqlighter = SQLighter(message.from_user.id)
         sqlighter.add_shedule_on_day('monday', message.text)
@@ -483,7 +481,6 @@ def add_shedule_on_monday(message):
 
 
 def add_shedule_on_tuesday(message):
-    global ACTIVE_CLASS, SHEDULE_ID
     try:
         sqlighter = SQLighter(message.from_user.id)
         sqlighter.add_shedule_on_day('tuesday', message.text)
@@ -494,7 +491,6 @@ def add_shedule_on_tuesday(message):
 
 
 def add_shedule_on_wednesday(message):
-    global ACTIVE_CLASS, SHEDULE_ID
     try:
         sqlighter = SQLighter(message.from_user.id)
         sqlighter.add_shedule_on_day('wednesday', message.text)
@@ -505,7 +501,6 @@ def add_shedule_on_wednesday(message):
 
 
 def add_shedule_on_thursday(message):
-    global ACTIVE_CLASS, SHEDULE_ID
     try:
         sqlighter = SQLighter(message.from_user.id)
         sqlighter.add_shedule_on_day('thursday', message.text)
@@ -516,7 +511,6 @@ def add_shedule_on_thursday(message):
 
 
 def add_shedule_on_friday(message):
-    global ACTIVE_CLASS, SHEDULE_ID
     try:
         sqlighter = SQLighter(message.from_user.id)
         sqlighter.add_shedule_on_day('friday', message.text)
@@ -527,7 +521,6 @@ def add_shedule_on_friday(message):
 
 
 def add_shedule_on_saturday(message):
-    global ACTIVE_CLASS, SHEDULE_ID
     try:
         sqlighter = SQLighter(message.from_user.id)
         sqlighter.add_shedule_on_day('saturday', message.text)
