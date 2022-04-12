@@ -109,7 +109,6 @@ class SQLighter:
         result_of_execute = self.cursor.execute(f'SELECT * FROM shedule'
                                                 f' WHERE class_id = (SELECT id FROM'
                                                 f' classes WHERE key = {key})').fetchall()
-        print(result_of_execute)
         return result_of_execute if result_of_execute else False
 
     def search_shedule_for_day(self, shedule_id, day):
@@ -164,6 +163,8 @@ def buttons(message):
         bot.send_message(message.chat.id, f'Ваш id: {message.chat.id}')
     elif message.text == 'Настройки':
         settings(message)
+    elif message.text == '❌Назад':
+        shedule(message)
     elif message.text == 'Добавить админа':
         sent = bot.send_message(message.chat.id, 'Введите id пользователя:', reply_markup=markup)
         bot.register_next_step_handler(sent, new_admin)
@@ -220,6 +221,8 @@ def create_class(message):
 
 def search_class(message):
     global ACTIVE_CLASS
+    if message.text == '✅Назад в главную':
+        return start_message(message)
     try:
         key = message.text
         sqlither = SQLighter(message.from_user.id)
@@ -278,8 +281,7 @@ def settings(message):
     try:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         buttons = ['Добавить админа', '🚫Назад', '✅Назад в главную']
-        for button in buttons:
-            markup.add(button)
+        markup.add(*buttons)
         bot.send_message(message.chat.id, 'Вы перешли в настройки', reply_markup=markup)
     except Exception as e:
         print(e)
@@ -316,9 +318,9 @@ def shedule(message):
         shedule = sqlighter.search_shedule(ACTIVE_CLASS)
         if shedule:
             buttons = ['Понедельник', 'Вторник', 'Среда', 'Четверг',
-                       'Пятница', 'Суббота', 'Изменить расписание']
+                       'Пятница', 'Суббота', 'Изменить расписание',
+                       '🚫Назад', '✅Назад в главную']
             markup.add(*buttons)
-            markup.add('✅Назад в главную')
             sent = bot.send_message(message.chat.id, 'Выберете день:', reply_markup=markup)
             SHEDULE_ID = shedule[0][0]
             bot.register_next_step_handler(sent, send_shedule)
@@ -335,27 +337,92 @@ def shedule(message):
 def send_shedule(message):
     global SHEDULE_ID
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add('Назад')
+    if message.text == 'Изменить расписание':
+        buttons = ['Понедельник', 'Вторник', 'Среда', 'Четверг',
+                   'Пятница', 'Суббота']
+        markup.add(*buttons)
+        markup.add('✅Назад в главную')
+        sent = bot.send_message(message.chat.id, 'Выберете день:', reply_markup=markup)
+        return bot.register_next_step_handler(sent, add_shedule)
+    elif message.text == '🚫Назад':
+        return back(message)
+    elif message.text == '✅Назад в главную':
+        return start_message(message)
+    markup.add('❌Назад')
     markup.add('✅Назад в главную')
     sqlighter = SQLighter(message.from_user.id)
     if message.text == 'Понедельник':
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'monday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        if day[0][0] is None:
+            bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+        else:
+            diary, digit = '', 1
+            for subject in day[0][0].split():
+                sub = diary
+                diary = sub + '\n' + str(digit) + '. ' + subject
+                digit += 1
+            bot.send_message(message.chat.id, diary, reply_markup=markup)
     elif message.text == 'Вторник':
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'tuesday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        if day[0][0] is None:
+            bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+        else:
+            diary, digit = '', 1
+            for subject in day[0][0].split():
+                sub = diary
+                diary = sub + '\n' + str(digit) + '. ' + subject
+                digit += 1
+            bot.send_message(message.chat.id, diary, reply_markup=markup)
     elif message.text == 'Среда':
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'wednesday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        if day[0][0] is None:
+            bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+        else:
+            diary, digit = '', 1
+            for subject in day[0][0].split():
+                sub = diary
+                diary = sub + '\n' + str(digit) + '. ' + subject
+                digit += 1
+            bot.send_message(message.chat.id, diary, reply_markup=markup)
     elif message.text == 'Четверг':
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'thursday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        if day[0][0] is None:
+            bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+        else:
+            diary, digit = '', 1
+            for subject in day[0][0].split():
+                sub = diary
+                diary = sub + '\n' + str(digit) + '. ' + subject
+                digit += 1
+            bot.send_message(message.chat.id, diary, reply_markup=markup)
     elif message.text == 'Пятница':
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'friday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        if day[0][0] is None:
+            bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+        else:
+            diary, digit = '', 1
+            for subject in day[0][0].split():
+                sub = diary
+                diary = sub + '\n' + str(digit) + '. ' + subject
+                digit += 1
+            bot.send_message(message.chat.id, diary, reply_markup=markup)
     elif message.text == 'Суббота':
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'saturday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        if day[0][0] is None:
+            bot.send_message(message.chat.id, 'На этот день расписание не добавлено.'
+                                              ' Добавьте его с помощью кнопки "Изменить расписание".', reply_markup=markup)
+        else:
+            diary, digit = '', 1
+            for subject in day[0][0].split():
+                sub = diary
+                diary = sub + '\n' + str(digit) + '. ' + subject
+                digit += 1
+            bot.send_message(message.chat.id, diary, reply_markup=markup)
     else:
         bot.send_message(message.chat.id, 'Такого дня нет в вашем расписании!')
 
@@ -363,27 +430,26 @@ def send_shedule(message):
 def add_shedule(message):
     global ACTIVE_CLASS
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add('Назад')
+    markup.add('❌Назад')
     markup.add('✅Назад в главную')
-    sqlighter = SQLighter(message.from_user.id)
     if message.text == 'Понедельник':
         sent = bot.send_message(message.chat.id, 'Введите предметы через пробел:', reply_markup=markup)
         bot.register_next_step_handler(sent, add_shedule_on_monday)
     elif message.text == 'Вторник':
-        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'tuesday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        sent = bot.send_message(message.chat.id, 'Введите предметы через пробел:', reply_markup=markup)
+        bot.register_next_step_handler(sent, add_shedule_on_tuesday)
     elif message.text == 'Среда':
-        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'wednesday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        sent = bot.send_message(message.chat.id, 'Введите предметы через пробел:', reply_markup=markup)
+        bot.register_next_step_handler(sent, add_shedule_on_wednesday)
     elif message.text == 'Четверг':
-        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'thursday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        sent = bot.send_message(message.chat.id, 'Введите предметы через пробел:', reply_markup=markup)
+        bot.register_next_step_handler(sent, add_shedule_on_thursday)
     elif message.text == 'Пятница':
-        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'friday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        sent = bot.send_message(message.chat.id, 'Введите предметы через пробел:', reply_markup=markup)
+        bot.register_next_step_handler(sent, add_shedule_on_friday)
     elif message.text == 'Суббота':
-        day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'saturday')
-        bot.send_message(message.chat.id, day, reply_markup=markup)
+        sent = bot.send_message(message.chat.id, 'Введите предметы через пробел:', reply_markup=markup)
+        bot.register_next_step_handler(sent, add_shedule_on_saturday)
     else:
         bot.send_message(message.chat.id, 'Такого дня нет в вашем расписании!')
 
@@ -393,6 +459,61 @@ def add_shedule_on_monday(message):
     try:
         sqlighter = SQLighter(message.from_user.id)
         sqlighter.add_shedule_on_day('monday', message.text)
+        bot.send_message(message.chat.id, 'Расписание успешно изменено.')
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
+
+
+def add_shedule_on_tuesday(message):
+    global ACTIVE_CLASS, SHEDULE_ID
+    try:
+        sqlighter = SQLighter(message.from_user.id)
+        sqlighter.add_shedule_on_day('tuesday', message.text)
+        bot.send_message(message.chat.id, 'Расписание успешно изменено.')
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
+
+
+def add_shedule_on_wednesday(message):
+    global ACTIVE_CLASS, SHEDULE_ID
+    try:
+        sqlighter = SQLighter(message.from_user.id)
+        sqlighter.add_shedule_on_day('wednesday', message.text)
+        bot.send_message(message.chat.id, 'Расписание успешно изменено.')
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
+
+
+def add_shedule_on_thursday(message):
+    global ACTIVE_CLASS, SHEDULE_ID
+    try:
+        sqlighter = SQLighter(message.from_user.id)
+        sqlighter.add_shedule_on_day('thursday', message.text)
+        bot.send_message(message.chat.id, 'Расписание успешно изменено.')
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
+
+
+def add_shedule_on_friday(message):
+    global ACTIVE_CLASS, SHEDULE_ID
+    try:
+        sqlighter = SQLighter(message.from_user.id)
+        sqlighter.add_shedule_on_day('friday', message.text)
+        bot.send_message(message.chat.id, 'Расписание успешно изменено.')
+    except Exception as e:
+        print(e)
+        bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
+
+
+def add_shedule_on_saturday(message):
+    global ACTIVE_CLASS, SHEDULE_ID
+    try:
+        sqlighter = SQLighter(message.from_user.id)
+        sqlighter.add_shedule_on_day('saturday', message.text)
         bot.send_message(message.chat.id, 'Расписание успешно изменено.')
     except Exception as e:
         print(e)
