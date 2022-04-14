@@ -7,6 +7,8 @@ import os
 import sqlite3
 import random
 import string
+import datetime
+import calendar
 
 # загружаем TOKEN из виртуального окружения
 load_dotenv()
@@ -157,6 +159,12 @@ class SQLighter:
         self.cursor.execute(sqlite_insert_query)
         self.con.commit()
 
+    def search_homework_on_date(self, date):
+        class_id = self.search_id_class(ACTIVE_CLASS)
+        result_of_execute = self.cursor.execute(f'SELECT homework FROM homework WHERE '
+                                                f'class_id = {class_id} AND date = {date}').fetchall()
+        return result_of_execute if result_of_execute else False
+
 
 # команда /start
 @bot.message_handler(commands=['start', 'help'])
@@ -209,12 +217,16 @@ def buttons(message):
     elif message.text == '✍Добавить ДЗ':
         sent = bot.send_message(message.chat.id, 'Напишите ДЗ в формате ДД.ММ и домашнее задание.')
         bot.register_next_step_handler(sent, add_homework)
+    elif message.text == '📖Узнать ДЗ':
+        search_homework(message)
     elif message.text == '📓Расписание':
         shedule(message)
     elif message.text == '🚫Назад':
         search_class(message, ACTIVE_CLASS)
     elif message.text == '❌Назад':
         shedule(message)
+    elif message.text == '🔴Назад':
+        homework(message)
     elif message.text == '✅Назад в главную':
         start_message(message)
     elif message.text == '🆔Получить id':
@@ -745,6 +757,53 @@ def add_homework(message):
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
         bot.send_message(message.chat.id, '❌Ошибка! Добавить домашнее задание')
+
+
+def search_homework(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    now_day, now_month = datetime.datetime.now().day, datetime.datetime.now().month
+    year, lst = datetime.datetime.now().year, []
+    another_date = 0
+    for i in range(7):
+        if now_day + i > calendar.monthrange(year, now_month)[1]:
+            another_date += 1
+            date = f'{another_date}.0{now_month + 1}'
+        else:
+            add_date = now_day + i
+            if add_date < 10:
+                add_date = f'0{add_date}'
+            if now_month < 10:
+                date = f'{add_date}.0{now_month}'
+            else:
+                date = f'{add_date}.{now_month}'
+        lst.append(date)
+    markup.add(*lst)
+    markup.add('🔴Назад')
+    sent = bot.send_message(message.chat.id, 'Выберете дату:', reply_markup=markup)
+    bot.register_next_step_handler(sent, send_homework)
+
+
+def send_homework(message):
+    try:
+        date = message.text
+        if date == '🔴Назад':
+            return homework(message)
+        sqlighter = SQLighter(message.from_user.id)
+        homewor = sqlighter.search_homework_on_date(date)
+        print(homewor)
+        homework_to_send = f'ДЗ на {date}:'
+        if not homewor:
+            raise Exception
+        if len(homewor) == 1:
+            homework_to_send = homework_to_send + '\n' + str(homewor[0][0])
+        else:
+            for hm in homewor:
+                st = homework_to_send
+                homework_to_send = st + '\n' + str(hm[0]) + '.'
+        bot.send_message(message.chat.id, homework_to_send)
+        return search_homework(message)
+    except Exception as e:
+        bot.send_message(message.chat.id, 'Нет ДЗ на этот день')
 
 
 # запускаем бота
