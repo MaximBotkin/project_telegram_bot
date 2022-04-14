@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import telebot
 from telebot import types
 from dotenv import load_dotenv
@@ -121,24 +123,28 @@ class SQLighter:
         return result_of_execute if result_of_execute else False
 
     def add_shedule(self, key):
+        # добавляем новое расписание
         class_id = self.search_id_class(key)
         sqlite_insert_query = f"""INSERT INTO shedule (class_id) VALUES ({class_id})"""
         self.cursor.execute(sqlite_insert_query)
         self.con.commit()
 
     def add_shedule_on_day(self, day, text):
+        # добавляем расписание на определённый день
         class_id = self.search_id_class(ACTIVE_CLASS)
         sqlite_insert_query = f"""UPDATE shedule SET {day} = '{text}' WHERE class_id = {class_id}"""
         self.cursor.execute(sqlite_insert_query)
         self.con.commit()
 
     def search_shedule(self, key):
+        # ищем расписание класса
         result_of_execute = self.cursor.execute(f'SELECT * FROM shedule'
                                                 f' WHERE class_id = (SELECT id FROM'
                                                 f' classes WHERE key = {key})').fetchall()
         return result_of_execute if result_of_execute else False
 
     def search_shedule_for_day(self, shedule_id, day):
+        # ищем расписание на определённый день
         result_of_execute = self.cursor.execute(f'SELECT {day} FROM shedule WHERE '
                                                 f'id = {shedule_id}').fetchall()
         return result_of_execute if result_of_execute else False
@@ -206,7 +212,7 @@ def buttons(message):
     elif message.text == '📓Расписание':
         shedule(message)
     elif message.text == '🚫Назад':
-        back(message)
+        search_class(message, ACTIVE_CLASS)
     elif message.text == '❌Назад':
         shedule(message)
     elif message.text == '✅Назад в главную':
@@ -288,7 +294,6 @@ def create_class(message):
                          reply_markup=markup)
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, '❌Ошибка! Не удалось создать класс.')
 
 
@@ -338,7 +343,6 @@ def search_class(message, key=None):
                              reply_markup=markup)
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, '❌Ошибка! Не удалось найти класс.')
 
 
@@ -372,7 +376,7 @@ def new_admin(message):
         return start_message(message)
     # возвращение к функциям в случае необходимости
     elif message.text == '🚫Назад':
-        return back(message)
+        return search_class(message, ACTIVE_CLASS)
     try:
         # получение id пользователя, которого хотим назначить админом
         new_admins = message.text
@@ -383,7 +387,6 @@ def new_admin(message):
         bot.send_message(message.chat.id, 'Админ успешно добавлен')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, '❌Ошибка! Не удалось добавить админа.')
 
 
@@ -398,7 +401,6 @@ def settings(message):
         bot.send_message(message.chat.id, 'Вы перешли в настройки.', reply_markup=markup)
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, 'Не удалось перейти в настройки.')
 
 
@@ -428,39 +430,47 @@ def list_of_classes(message):
                              reply_markup=markup)
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         markup.add('✅Назад в главную')
         bot.send_message(message.chat.id, 'К сожалению, вы не состоите не в одном классе.',
                          reply_markup=markup)
 
 
+# функция расписания
 def shedule(message):
     global ACTIVE_CLASS, SHEDULE_ID
     try:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         sqlighter = SQLighter(message.from_user.id)
+        # ищем расписание
         shedule = sqlighter.search_shedule(ACTIVE_CLASS)
+        # если есть, добавляем кнопки дней
         if shedule:
             buttons = ['Понедельник', 'Вторник', 'Среда', 'Четверг',
-                       'Пятница', 'Суббота', '✍🏻Изменить расписание',
-                       '🚫Назад', '✅Назад в главную']
+                       'Пятница', 'Суббота', '🚫Назад', '✅Назад в главную']
+            if sqlighter.user_is_admin(ACTIVE_CLASS):
+                markup.add('✍🏻Изменить расписание')
             markup.add(*buttons)
+            # даем выбор дня пользователя
             sent = bot.send_message(message.chat.id, 'Выберете день:', reply_markup=markup)
             SHEDULE_ID = shedule[0][0]
             bot.register_next_step_handler(sent, send_shedule)
         else:
+            # иначе предлагаем добавить новое расписание
             buttons1 = ['📖Добавить расписание', '🚫Назад']
             markup.add(*buttons1)
+            # и присылаем сообщение
             bot.send_message(message.chat.id, 'На данный момент расписание не добавлено.',
                              reply_markup=markup)
     except Exception as e:
-        print(e)
+        # в случае ошибки выводим пользователю следующий текст
         bot.send_message(message.chat.id, 'Не удалось найти расписание.')
 
 
+# функция отправки расписания
 def send_shedule(message):
-    global SHEDULE_ID
+    global ACTIVE_CLASS, SHEDULE_ID
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    # если нажата кнопка изменения расписания, предлагаем какой день изменить
     if message.text == '✍🏻Изменить расписание':
         buttons = ['Понедельник', 'Вторник', 'Среда', 'Четверг',
                    'Пятница', 'Суббота', '🚫Назад']
@@ -469,12 +479,13 @@ def send_shedule(message):
         sent = bot.send_message(message.chat.id, 'Выберете день:', reply_markup=markup)
         return bot.register_next_step_handler(sent, add_shedule)
     if message.text == '🚫Назад':
-        return back(message)
+        return search_class(message, ACTIVE_CLASS)
     elif message.text == '✅Назад в главную':
         return start_message(message)
     markup.add('❌Назад')
     markup.add('✅Назад в главную')
     sqlighter = SQLighter(message.from_user.id)
+    # выводим расписание на разные дни
     if message.text == 'Понедельник':
         day = sqlighter.search_shedule_for_day(SHEDULE_ID, 'monday')
         if day[0][0] is None:
@@ -482,6 +493,7 @@ def send_shedule(message):
                                               ' Добавьте его с помощью кнопки "✍🏻Изменить расписание".',
                              reply_markup=markup)
         else:
+            # выводим на новой строке с номером урока в начале
             diary, digit = '', 1
             for subject in day[0][0].split():
                 sub = diary
@@ -608,7 +620,6 @@ def add_shedule_on_monday(message):
         bot.send_message(message.chat.id, 'Расписание успешно изменено.')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
 
 
@@ -625,7 +636,6 @@ def add_shedule_on_tuesday(message):
         bot.send_message(message.chat.id, 'Расписание успешно изменено.')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
 
 
@@ -642,7 +652,6 @@ def add_shedule_on_wednesday(message):
         bot.send_message(message.chat.id, 'Расписание успешно изменено.')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
 
 
@@ -659,7 +668,6 @@ def add_shedule_on_thursday(message):
         bot.send_message(message.chat.id, 'Расписание успешно изменено.')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
 
 
@@ -676,7 +684,6 @@ def add_shedule_on_friday(message):
         bot.send_message(message.chat.id, 'Расписание успешно изменено.')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
 
 
@@ -693,7 +700,6 @@ def add_shedule_on_saturday(message):
         bot.send_message(message.chat.id, 'Расписание успешно изменено.')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, 'Не удалось добавить расписание.')
 
 
@@ -738,7 +744,6 @@ def add_homework(message):
         sqlighter.create_new_homework(key, date, homeworks)
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
-        print(e)
         bot.send_message(message.chat.id, '❌Ошибка! Добавить домашнее задание')
 
 
