@@ -754,6 +754,7 @@ def add_homework(message):
         homeworks = lst[1]
         # добваляем в БД значения из переменных
         sqlighter.create_new_homework(key, date, homeworks)
+        bot.send_message(message.chat.id, f'Домашнее задание на {date} успешно добавлено.')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
         bot.send_message(message.chat.id, '❌Ошибка! Добавить домашнее задание')
