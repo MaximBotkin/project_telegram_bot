@@ -215,10 +215,9 @@ def buttons(message):
     elif message.text == '📒ДЗ':
         homework(message)
     elif message.text == '✍Добавить ДЗ':
-        sent = bot.send_message(message.chat.id, 'Напишите ДЗ в формате ДД.ММ и домашнее задание.')
-        bot.register_next_step_handler(sent, add_homework)
+        add_homework(message)
     elif message.text == '📖Узнать ДЗ':
-        search_homework(message)
+        search_homework()
     elif message.text == '📓Расписание':
         shedule(message)
     elif message.text == '🚫Назад':
@@ -727,7 +726,32 @@ def homework(message):
 
 
 def add_homework(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    now_day, now_month = datetime.datetime.now().day, datetime.datetime.now().month
+    year, lst = datetime.datetime.now().year, []
+    another_date = 0
+    for i in range(7):
+        if now_day + i > calendar.monthrange(year, now_month)[1]:
+            another_date += 1
+            date = f'{another_date}.0{now_month + 1}'
+        else:
+            add_date = now_day + i
+            if add_date < 10:
+                add_date = f'0{add_date}'
+            if now_month < 10:
+                date = f'{add_date}.0{now_month}'
+            else:
+                date = f'{add_date}.{now_month}'
+        lst.append(date)
+    markup.add(*lst)
+    sent = bot.send_message(message.chat.id, 'Выберете дату:', reply_markup=markup)
+    bot.register_next_step_handler(sent, search_homeworks)
+
+
+def create_homework(message):
     global ACTIVE_CLASS
+    global ACTIVE_DAY
+    homeworks = message.text
     try:
         # создание ключа для домашних заданий
         creating_key = True
@@ -742,19 +766,8 @@ def add_homework(message):
             # проверка уникальности ключа ( нет проверки )
             if key[0] != '0':
                 creating_key = False
-        # создание спика, в котором будут хранится дата и само домашнее задание
-        lst = []
-        # сохранение первым элементом даты из полученного сообщения в формате ДД.ММ
-        lst.append(message.text[0:5])
-        # сохранение вторым элементом всего домашнего задания на введенный день
-        lst.append(message.text[6:])
-        # присваеваем дату из списка в переменную date
-        date = lst[0]
-        # присваеваем домашнее задание из списка в переменную homeworks
-        homeworks = lst[1]
-        # добваляем в БД значения из переменных
-        sqlighter.create_new_homework(key, date, homeworks)
-        bot.send_message(message.chat.id, f'Домашнее задание на {date} успешно добавлено.')
+        sqlighter.create_new_homework(key, ACTIVE_DAY, homeworks)
+        bot.send_message(message.chat.id, f'Домашнее задание на {ACTIVE_DAY} успешно добавлено')
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
         bot.send_message(message.chat.id, '❌Ошибка! Добавить домашнее задание')
@@ -805,6 +818,13 @@ def send_homework(message):
         return search_homework(message)
     except Exception as e:
         bot.send_message(message.chat.id, 'Нет ДЗ на этот день')
+
+
+def search_homeworks(message):
+    global ACTIVE_DAY
+    ACTIVE_DAY = message.text
+    sent = bot.send_message(message.chat.id, 'Напишите домшнее задание')
+    bot.register_next_step_handler(sent, create_homework)
 
 
 # запускаем бота
