@@ -217,7 +217,7 @@ def buttons(message):
     elif message.text == '✍Добавить ДЗ':
         add_homework(message)
     elif message.text == '📖Узнать ДЗ':
-        search_homework()
+        search_homework(message)
     elif message.text == '📓Расписание':
         shedule(message)
     elif message.text == '🚫Назад':
