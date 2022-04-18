@@ -828,7 +828,7 @@ def search_homeworks(message):
         return homework(message)
     else:
         ACTIVE_DAY = message.text
-    sent = bot.send_message(message.chat.id, 'Напишите домшнее задание', reply_markup=types.ReplyKeyboardRemove())
+    sent = bot.send_message(message.chat.id, 'Напишите домашнее задание', reply_markup=types.ReplyKeyboardRemove())
     bot.register_next_step_handler(sent, create_homework)
 
 
