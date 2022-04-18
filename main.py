@@ -744,6 +744,7 @@ def add_homework(message):
                 date = f'{add_date}.{now_month}'
         lst.append(date)
     markup.add(*lst)
+    markup.add('🔴Назад')
     sent = bot.send_message(message.chat.id, 'Выберете дату:', reply_markup=markup)
     bot.register_next_step_handler(sent, search_homeworks)
 
@@ -768,6 +769,7 @@ def create_homework(message):
                 creating_key = False
         sqlighter.create_new_homework(key, ACTIVE_DAY, homeworks)
         bot.send_message(message.chat.id, f'Домашнее задание на {ACTIVE_DAY} успешно добавлено')
+        homework(message)
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
         bot.send_message(message.chat.id, '❌Ошибка! Добавить домашнее задание')
@@ -822,8 +824,11 @@ def send_homework(message):
 
 def search_homeworks(message):
     global ACTIVE_DAY
-    ACTIVE_DAY = message.text
-    sent = bot.send_message(message.chat.id, 'Напишите домшнее задание')
+    if message.text == '🔴Назад':
+        return homework(message)
+    else:
+        ACTIVE_DAY = message.text
+    sent = bot.send_message(message.chat.id, 'Напишите домшнее задание', reply_markup=types.ReplyKeyboardRemove())
     bot.register_next_step_handler(sent, create_homework)
 
 
