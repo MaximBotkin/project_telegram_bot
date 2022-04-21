@@ -518,6 +518,7 @@ def send_shedule(message):
                                               ' Добавьте его с помощью кнопки "✍🏻Изменить расписание".',
                              reply_markup=markup)
         else:
+            # выводим на новой строке с номером урока в начале
             diary, digit = '', 1
             for subject in day[0][0].split():
                 sub = diary
@@ -531,6 +532,7 @@ def send_shedule(message):
                                               ' Добавьте его с помощью кнопки "✍🏻Изменить расписание".',
                              reply_markup=markup)
         else:
+            # выводим на новой строке с номером урока в начале
             diary, digit = '', 1
             for subject in day[0][0].split():
                 sub = diary
@@ -544,6 +546,7 @@ def send_shedule(message):
                                               ' Добавьте его с помощью кнопки "✍🏻Изменить расписание".',
                              reply_markup=markup)
         else:
+            # выводим на новой строке с номером урока в начале
             diary, digit = '', 1
             for subject in day[0][0].split():
                 sub = diary
@@ -557,6 +560,7 @@ def send_shedule(message):
                                               ' Добавьте его с помощью кнопки "✍🏻Изменить расписание".',
                              reply_markup=markup)
         else:
+            # выводим на новой строке с номером урока в начале
             diary, digit = '', 1
             for subject in day[0][0].split():
                 sub = diary
@@ -570,6 +574,7 @@ def send_shedule(message):
                                               ' Добавьте его с помощью кнопки "✍🏻Изменить расписание".',
                              reply_markup=markup)
         else:
+            # выводим на новой строке с номером урока в начале
             diary, digit = '', 1
             for subject in day[0][0].split():
                 sub = diary
@@ -725,11 +730,15 @@ def homework(message):
     bot.send_message(message.chat.id, 'Вы перешли в домашние задания', reply_markup=markup)
 
 
+# добавление домашнего задания
 def add_homework(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    # получение текущей даты путем datetime
     now_day, now_month = datetime.datetime.now().day, datetime.datetime.now().month
+    # получение текущего года, создание списка
     year, lst = datetime.datetime.now().year, []
     another_date = 0
+    # сортировка по датам календаря
     for i in range(7):
         if now_day + i > calendar.monthrange(year, now_month)[1]:
             another_date += 1
@@ -775,11 +784,15 @@ def create_homework(message):
         bot.send_message(message.chat.id, '❌Ошибка! Добавить домашнее задание')
 
 
+# поиск домашнего задания
 def search_homework(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    # получение текущей даты путем datetime
     now_day, now_month = datetime.datetime.now().day, datetime.datetime.now().month
+    # получение текущего года, создание списка
     year, lst = datetime.datetime.now().year, []
     another_date = 0
+    # сортировка по датам календаря
     for i in range(7):
         if now_day + i > calendar.monthrange(year, now_month)[1]:
             another_date += 1
@@ -799,20 +812,24 @@ def search_homework(message):
     bot.register_next_step_handler(sent, send_homework)
 
 
+# отправка домашнего задания пользователю
 def send_homework(message):
     try:
         date = message.text
         if date == '🔴Назад':
             return homework(message)
+        # подключение к БД
         sqlighter = SQLighter(message.from_user.id)
         homewor = sqlighter.search_homework_on_date(date)
         print(homewor)
         homework_to_send = f'ДЗ на {date}:'
+        # проверка на наличие домашнего задания
         if not homewor:
             raise Exception
         if len(homewor) == 1:
             homework_to_send = homework_to_send + '\n' + str(homewor[0][0])
         else:
+            # вывод домашнего задания
             for hm in homewor:
                 st = homework_to_send
                 homework_to_send = st + '\n' + str(hm[0]) + '.'
@@ -822,11 +839,13 @@ def send_homework(message):
         bot.send_message(message.chat.id, 'Нет ДЗ на этот день')
 
 
+# переходное значение для получения домашнего задания
 def search_homeworks(message):
     global ACTIVE_DAY
     if message.text == '🔴Назад':
         return homework(message)
     else:
+        # помещяем дату домашнего задания в переменную
         ACTIVE_DAY = message.text
     sent = bot.send_message(message.chat.id, 'Напишите домашнее задание', reply_markup=types.ReplyKeyboardRemove())
     bot.register_next_step_handler(sent, create_homework)
