@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import requests.exceptions
 import telebot
 from telebot import types
 from dotenv import load_dotenv
@@ -854,4 +855,7 @@ def search_homeworks(message):
 # запускаем бота
 if __name__ == '__main__':
     print('Bot is working...')
-    bot.infinity_polling()
+    try:
+        bot.infinity_polling()
+    except requests.exceptions.ConnectionError:
+        bot.infinity_polling()
