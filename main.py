@@ -173,7 +173,7 @@ def start_message(message):
     # получаем имя user и здороваемся с ним
     user_first_name = str(message.chat.first_name)
     # создаём список с нужными для нас кнопками
-    buttons = ['👩‍🏫Создать класс', '👨‍🎓Найти класс', '❓Сообщить об ошибке', '🎓Ваши классы', '🆔Получить id']
+    buttons = ['👩‍🏫Создать класс', '👨‍🎓Найти класс', '❓Связаться с разработчиками', '🎓Ваши классы', '🆔Получить id']
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     # добавление кнопок из списка на главный экран
     for button in buttons:
@@ -194,10 +194,10 @@ def buttons(message):
     # Либо перенаправляет нас на другие функции,
     # Либо в случае необходимости вводить данные вручную, в зависимости от функций,
     # бот будет ждать от пользователя ввода конкретных данных от пользователя методом bot.register_next_step_handler
-    if message.text == '❓Сообщить об ошибке':
+    if message.text == '❓Связаться с разработчиками':
         markup.add('✅Назад в главную')
-        bot.send_message(message.chat.id, text='Если вы столкнулись с ошибкой, напишите'
-                                               ' админам: @Maxb0t или @kirmiq.', reply_markup=markup)
+        bot.send_message(message.chat.id, text='Если вы столкнулись с ошибкой или хотите указать свои пожелания,'
+                                               ' напишите админам: @Maxb0t или @kirmiq.', reply_markup=markup)
     elif message.text == '👨‍🎓Найти класс':
         markup.add('✅Назад в главную')
         sent = bot.send_message(message.chat.id, text='Введите id класса(6-значный ключ из цифр):',
@@ -231,6 +231,8 @@ def buttons(message):
         start_message(message)
     elif message.text == '🆔Получить id':
         bot.send_message(message.chat.id, f'Ваш id: {message.chat.id}')
+    elif message.text == '🔑Получить ключ':
+        send_class_id(message)
     elif message.text == '⚙Настройки':
         settings(message)
     elif message.text == '👨🏻‍🏫Добавить админа':
@@ -275,6 +277,8 @@ def create_class(message):
     try:
         # Выход из функции при необходимости вернуться на главную
         if message.text == '✅Назад в главную':
+            return start_message(message)
+        elif message.text == '/start':
             return start_message(message)
         # создание уникального ключа
         creating_key = True
@@ -407,13 +411,22 @@ def settings(message):
     try:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         # возможные настройки администратора
-        buttons = ['👨🏻‍🏫Добавить админа', '🚫Назад', '✅Назад в главную']
+        buttons = ['👨🏻‍🏫Добавить админа', '🔑Получить ключ', '🚫Назад', '✅Назад в главную']
         # вывод кнопок из списка
         markup.add(*buttons)
         bot.send_message(message.chat.id, 'Вы перешли в настройки.', reply_markup=markup)
     # вывод сообщения об ошибке в случае некоррекного ввода данных / неверного вызова
     except Exception as e:
         bot.send_message(message.chat.id, 'Не удалось перейти в настройки.')
+
+
+def send_class_id(mesage):
+    try:
+        bot.send_message(mesage.chat.id, f'Ключ вашего класса - {ACTIVE_CLASS}')
+        return settings(mesage)
+    except Exception:
+        bot.send_message(mesage.chat.id, 'Не удалось получить ключ вашего класса.')
+        return settings(mesage)
 
 
 # вывод классов к которых состоит пользователь
@@ -474,6 +487,7 @@ def shedule(message):
             bot.send_message(message.chat.id, 'На данный момент расписание не добавлено.',
                              reply_markup=markup)
     except Exception as e:
+        print(e)
         # в случае ошибки выводим пользователю следующий текст
         bot.send_message(message.chat.id, 'Не удалось найти расписание.')
 
@@ -822,7 +836,6 @@ def send_homework(message):
         # подключение к БД
         sqlighter = SQLighter(message.from_user.id)
         homewor = sqlighter.search_homework_on_date(date)
-        print(homewor)
         homework_to_send = f'ДЗ на {date}:'
         # проверка на наличие домашнего задания
         if not homewor:
@@ -855,7 +868,10 @@ def search_homeworks(message):
 # запускаем бота
 if __name__ == '__main__':
     print('Bot is working...')
-    try:
-        bot.infinity_polling()
-    except requests.exceptions.ConnectionError:
-        bot.infinity_polling()
+    while True:
+        try:
+            bot.infinity_polling()
+        except Exception as e:
+            print(e)
+            print(e.__class__.__name__)
+            bot.infinity_polling()
